@@ -24,7 +24,7 @@ public class SelfReportingAgent extends Agent {
         reportMethod();
     }
     
-    void register(String name, String type)
+    void registerService(String name, String type)
     {
         
         DFAgentDescription sellerDescription = new DFAgentDescription();

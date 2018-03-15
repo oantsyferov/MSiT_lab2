@@ -16,16 +16,15 @@ import jade.proto.states.MsgReceiver;
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 /**
  *
  * @author oleksandr.antsyferov
  */
-public class NavigatorAgent extends SelfReportingAgent{
-    
+public class NavigatorAgent extends SelfReportingAgent {
+
     private AID walker;
     private int counter;
-    
+
     protected void requestNewWalker() {
         ++counter;
         DFAgentDescription agentDescription = new DFAgentDescription();
@@ -48,14 +47,14 @@ public class NavigatorAgent extends SelfReportingAgent{
             //Get responses for walker requests
             addBehaviour(new MsgReceiver(this,
                     MessageTemplate.MatchConversationId(conversationId),
-                    System.currentTimeMillis() + 1000, 
+                    System.currentTimeMillis() + 1000,
                     null, null) {
                 @Override
                 protected void handleMessage(ACLMessage msg) {
                     if (null == msg) {
                         System.out.println("no response for walker request:" + conversationId);
                         requestNewWalker();
-                        
+
                     } else {
                         walker = new AID();
                         walker.setName(message.getContent());
@@ -63,12 +62,12 @@ public class NavigatorAgent extends SelfReportingAgent{
                     }
                 }
             });
-    
+
         } catch (Exception e) {
 
         }
     }
-    
+
     @Override
     protected void setup() {
         counter = 0;
@@ -78,27 +77,23 @@ public class NavigatorAgent extends SelfReportingAgent{
                 requestNewWalker();
             }
         });
-        
-        
-        
+
         addBehaviour(new TickerBehaviour(this, 100) {
             @Override
             protected void onTick() {
-                if(null == walker)
-                {
+                if (null == walker) {
                     requestNewWalker();
                 }
             }
         });
 
-        
-         addBehaviour(new TickerBehaviour(this, 15000) {
+        addBehaviour(new TickerBehaviour(this, 15000) {
             @Override
             protected void onTick() {
                 walker = null;
             }
         });
-        
+
     }
 
 }

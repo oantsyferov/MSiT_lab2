@@ -90,7 +90,7 @@ public class NavigatorAgent extends SelfReportingAgent {
         addBehaviour(new TickerBehaviour(this, 15000) {
             @Override
             protected void onTick() {
-                walker = null;
+                //walker = null;
             }
         });
 

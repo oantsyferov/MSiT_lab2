@@ -46,7 +46,7 @@ public class InitializationAgent extends SelfReportingAgent {
                 //navigator for guiding a walker in the world
                 startNewAgent("navigator", "NavigatorAgent", null);
                 //the navigator is one of, terminate if not available
-                startNewAgent("navigatorWatcher", "WatchDogAgent", new String[]{"navigator"});
+                //startNewAgent("navigatorWatcher", "WatchDogAgent", new String[]{"navigator"});
              
                 
                 //setup walker creation service

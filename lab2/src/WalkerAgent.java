@@ -3,6 +3,7 @@ import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import java.util.EnumSet;
+import java.util.BitSet;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -20,120 +21,127 @@ public class WalkerAgent extends SelfReportingAgent {
     final public String ACT_TURN = "turn";
     final public String ACT_SHOOT = "shoot";
     final public String ACT_AMMO = "ammo";
-    
+
     public enum Feels {
         GOLD_NEAR, PIT_NEAR, WAMPUS_NEAR,
-        GOLD_FOUND, PIT_FOUND, 
+        GOLD_FOUND, PIT_FOUND,
         WAMPUS_FOUND_ALIVE, WAMPUS_FOUND_DEAD
     };
 
-    final String[][] map = new String[][] {
+    final String[][] map = new String[][]{
         //0   1   2   3   4   5   6   7   8
-        {" "," "," "," "," "," ","P"," "," "},//0
-        {" "," ","G"," "," "," "," "," "," "},//1
-        {" ","P"," "," ","P"," ","G"," "," "},//2
-        {" "," ","G"," "," "," "," ","P"," "},//3
-        {" "," "," "," ","M","P"," "," "," "},//4
-        {"P"," "," ","G"," "," "," ","G"," "} //5
+        {" ", " ", " ", " ", " ", " ", "P", " ", " "},//0
+        {" ", " ", "G", " ", " ", " ", " ", " ", " "},//1
+        {" ", "P", " ", " ", "P", " ", "G", " ", " "},//2
+        {" ", " ", "G", " ", " ", " ", " ", "P", " "},//3
+        {" ", " ", " ", " ", "M", "P", " ", " ", " "},//4
+        {"P", " ", " ", "G", " ", " ", " ", "G", " "} //5
     };
-    
+
     int x = 0;
     int y = 0;
     int direction = 0; //0-top, 1-right, 2-down, 3-left
-    
+
     int ammo = 1;
 
-    void turn(){
+    void turn() {
         direction += 1;
-        if(4 == direction) {
+        if (4 == direction) {
             direction = 0;
         }
     }
-    
-    boolean walk(){
+
+    boolean walk() {
         //move checks
         if ((0 == direction) && (y > 0)) {
             --y;
         } else if (1 == direction
                 && x < map[0].length - 1) {
             ++x;
-            
-        } else if (2 == direction 
+
+        } else if (2 == direction
                 && y < map.length - 1) {
             ++y;
-        } else if (3 == direction 
+        } else if (3 == direction
                 && x > 0) {
             --x;
         } else {
             return false;
         }
-        
+
         //checks after moving in the new cell
-        if(0 == x && 0 == y) {
+        if (0 == x && 0 == y) {
             ammo = 1;
         }
-        
+
         return true;
     }
-    
-    EnumSet<Feels> feelRoom(int y, int x){
-        EnumSet<Feels> result = EnumSet.noneOf(Feels.class);
+
+    BitSet feelRoom(int y, int x) {
+        BitSet result = new BitSet(8);
+
         String content = map[y][x];
         if ("P" == content) {
-            result.add(Feels.PIT_FOUND);
+            result.set(Feels.PIT_FOUND.ordinal()); //pit found
         } else if ("G" == content) {
-            result.add(Feels.GOLD_FOUND);
+            result.set(Feels.GOLD_FOUND.ordinal()); //gold found
         } else if ("M" == content) {
-            result.add(Feels.WAMPUS_FOUND_ALIVE);
-        }
-        return result;
-    }
-    
-    EnumSet<Feels> weakenFeels(EnumSet<Feels> feels) {
-         EnumSet<Feels> result = EnumSet.noneOf(Feels.class);
-         
-         if(feels.contains(Feels.GOLD_FOUND)) {
-             result.add(Feels.GOLD_NEAR);
-         }
-         
-         if(feels.contains(Feels.PIT_FOUND)) {
-             result.add(Feels.PIT_NEAR);
-         }
-         
-         if(feels.contains(Feels.WAMPUS_FOUND_ALIVE)) {
-             result.add(Feels.WAMPUS_NEAR);
-         }
-         
-         return result;
-    }
-    
-    EnumSet<Feels> feel() {
-        EnumSet<Feels> result = EnumSet.noneOf(Feels.class);
-        //check current room
-        result.addAll(feelRoom(y,x));
-       
-        //check neighboring rooms
-        if (x > 0) {
-            result.addAll(weakenFeels(feelRoom(y, x - 1)));
-        }
-        if (y > 0) {
-            result.addAll(weakenFeels(feelRoom(y - 1, x)));
-        }
-        if (x + 1 < map[0].length) {
-            result.addAll(weakenFeels(feelRoom(y, x + 1)));
-        }
-        if (y + 1 < map.length) {
-            result.addAll(weakenFeels(feelRoom(y + 1, x)));
+            result.set(Feels.WAMPUS_FOUND_ALIVE.ordinal()); //alive wampus
+        } else if ("C" == content) {
+            result.set(Feels.WAMPUS_FOUND_DEAD.ordinal()); //dead wampus
         }
 
-        
         return result;
     }
-    
-    void shoot() {
-        
+
+    BitSet weakenFeels(BitSet feels) {
+        BitSet result = new BitSet(feels.size());
+
+        if (feels.get(Feels.GOLD_FOUND.ordinal())) {
+            result.set(Feels.GOLD_NEAR.ordinal());
+        }
+        if (feels.get(Feels.PIT_FOUND.ordinal())) {
+            result.set(Feels.PIT_NEAR.ordinal());
+        }
+        if (feels.get(Feels.WAMPUS_FOUND_ALIVE.ordinal())) {
+            result.set(Feels.WAMPUS_NEAR.ordinal());
+        }
+
+        return result;
     }
-    
+
+    BitSet feel() {
+        BitSet result = new BitSet(8);
+
+        result.or(feelRoom(y, x));
+        if (x > 0) {
+            result.or(weakenFeels(feelRoom(y, x - 1)));
+        }
+        if (y > 0) {
+            result.or(weakenFeels(feelRoom(y - 1, x)));
+        }
+        if (x + 1 < map[0].length) {
+            result.or(weakenFeels(feelRoom(y, x + 1)));
+        }
+        if (y + 1 < map.length) {
+            result.or(weakenFeels(feelRoom(y + 1, x)));
+        }
+
+        return result;
+    }
+
+    boolean shoot() {
+
+        if (ammo > 0) {
+            --ammo;
+            //kill calculation here
+            //kill confirmation in feel()
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     int ammo() {
         return ammo;
     }
@@ -146,14 +154,12 @@ public class WalkerAgent extends SelfReportingAgent {
                         && x == column) {
                     System.out.print("H ");
                 } else {
-                    if(" " == map[row][column]) {
+                    if (" " == map[row][column]) {
                         System.out.print("- ");
-                    }
-                    else
-                    {
+                    } else {
                         System.out.print(map[row][column] + " ");
                     }
-                    
+
                 }
             }
             System.out.println("");
@@ -166,32 +172,32 @@ public class WalkerAgent extends SelfReportingAgent {
         super.setup();
 
         registerService("walker", MSG_QUEUE_CLASS);
-        
+
         addBehaviour(new OneShotBehaviour() {
             @Override
             public void action() {
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 turn();
-               
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
@@ -201,19 +207,18 @@ public class WalkerAgent extends SelfReportingAgent {
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
+
                 walk();
                 System.out.println("walker feels:" + feel());
                 print();
-                
 
             }
         });
@@ -224,21 +229,41 @@ public class WalkerAgent extends SelfReportingAgent {
                 ACLMessage message = receive();
                 if (null != message) {
                     String command = message.getContent();
+                    ACLMessage response = message.createReply();
                     if (ACT_WALK == command) {
-                        walk();
+                        boolean result = walk();
+                        if (result) {
+                            response.setPerformative(ACLMessage.CONFIRM);
+                        } else {
+                            response.setPerformative(ACLMessage.DISCONFIRM);
+                        }
 
                     } else if (ACT_FEEL == command) {
-                        EnumSet<Feels> feels = feel();
+                        BitSet result = feel(); //redo enum set
+                        try {
+                            response.setContentObject(String.valueOf(result.toLongArray()[0]));
+                        } catch (Exception e) {
+                        }
 
                     } else if (ACT_TURN == command) {
-                        turn();
+                        turn(); //always happens
+                        response.setPerformative(ACLMessage.CONFIRM);
 
                     } else if (ACT_SHOOT == command) {
-                        shoot();
+                        boolean result = shoot();
+                        if (result) {
+                            response.setPerformative(ACLMessage.CONFIRM);
+                        } else {
+                            response.setPerformative(ACLMessage.DISCONFIRM);
+                        }
 
                     } else if (ACT_AMMO == command) {
                         int arrows = ammo();
+                        response.setContent(Integer.toString(arrows));
+                        response.setPerformative(ACLMessage.CONFIRM);
 
+                    } else {
+                        response.setPerformative(ACLMessage.UNKNOWN);
                     }
                 } else {
                     block();

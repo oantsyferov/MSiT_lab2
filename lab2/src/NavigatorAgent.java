@@ -10,6 +10,9 @@ import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.MessageTemplate;
 import jade.proto.states.MsgReceiver;
+import java.util.LinkedList;
+
+import java.util.Queue;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -24,6 +27,7 @@ public class NavigatorAgent extends SelfReportingAgent {
 
     private AID walker;
     private int counter;
+    private Queue<String> actions;
 
     protected void requestNewWalker() {
         ++counter;
@@ -57,7 +61,7 @@ public class NavigatorAgent extends SelfReportingAgent {
 
                     } else {
                         walker = new AID();
-                        walker.setName(message.getContent());
+                        walker.setLocalName(message.getContent());
                         System.out.println("got response for walker request:" + conversationId);
                     }
                 }
@@ -67,10 +71,75 @@ public class NavigatorAgent extends SelfReportingAgent {
 
         }
     }
+    
+    private void addWalkerRequests(String request) {
+        //start the behaviour each time to avoid unnesseary polling on empty queue
+        if (null == actions) {
+            actions = new LinkedList<String>();
+        }
+        if (actions.size() <= 0) {
+            addBehaviour(new Behaviour() {
+
+                boolean active_communication = false;
+                int communication_attempts = 0;
+                final int communication_attempts_max = 3;
+
+                @Override
+                public void action() {
+                    
+                    if (false == active_communication) {
+                        if (null != walker && null != actions.peek())  {
+                            ACLMessage message = new ACLMessage(ACLMessage.REQUEST);
+                            message.setConversationId("navigator-to-walker-request" + System.currentTimeMillis());
+                            message.addReceiver(walker);
+                            message.setContent(actions.peek());
+                            send(message);
+                            block(1000);
+                            active_communication = true;
+                        }
+                    } else {
+                        ACLMessage message = receive();
+                        if (null != message) {
+                            communication_attempts = 0;
+                            active_communication = false;
+                            
+                            if(actions.peek().equals(WalkerAgent.ACT_FEEL)) {
+                                System.out.println("Navigator got Walker feelings:" + message.getContent());
+                            }
+                            
+                            actions.poll();
+                            
+                            //verify conversiation id, handle result
+                            
+                        } else {
+                            if(communication_attempts < communication_attempts_max) {
+                                block(1000);
+                            } else {
+                                active_communication = false;
+                            }
+                            
+                            ++communication_attempts;
+                        }
+
+                    }
+                    //schedule message handling
+                }
+
+                public boolean done() {
+                    if (0 == actions.size()) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            });
+        }
+        
+        actions.add(request);
+    }
 
     @Override
     protected void setup() {
-        counter = 0;
         addBehaviour(new OneShotBehaviour() {
             @Override
             public void action() {
@@ -86,14 +155,33 @@ public class NavigatorAgent extends SelfReportingAgent {
                 }
             }
         });
-
-        addBehaviour(new TickerBehaviour(this, 15000) {
+        
+        
+        
+        
+        test();        
+    }
+    
+    
+    private void test() {
+        addBehaviour(new OneShotBehaviour() {
             @Override
-            protected void onTick() {
-                //walker = null;
-            }
+            public void action() {
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_TURN);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_TURN);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_WALK);
+                addWalkerRequests(WalkerAgent.ACT_FEEL);    
+               }
         });
-
     }
 
 }

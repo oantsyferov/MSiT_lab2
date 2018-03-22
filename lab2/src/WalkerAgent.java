@@ -16,11 +16,11 @@ import java.util.BitSet;
  */
 public class WalkerAgent extends SelfReportingAgent {
 
-    final public String ACT_WALK = "walk";
-    final public String ACT_FEEL = "feel";
-    final public String ACT_TURN = "turn";
-    final public String ACT_SHOOT = "shoot";
-    final public String ACT_AMMO = "ammo";
+    final static public String ACT_WALK = "walk";
+    final static public String ACT_FEEL = "feel";
+    final static public String ACT_TURN = "turn";
+    final static public String ACT_SHOOT = "shoot";
+    final static public String ACT_AMMO = "ammo";
 
     public enum Feels {
         GOLD_NEAR, PIT_NEAR, WAMPUS_NEAR,
@@ -166,13 +166,9 @@ public class WalkerAgent extends SelfReportingAgent {
         }
         System.out.println();
     }
-
-    @Override
-    protected void setup() {
-        super.setup();
-
-        registerService("walker", MSG_QUEUE_CLASS);
-
+    
+    private void test()
+    {
         addBehaviour(new OneShotBehaviour() {
             @Override
             public void action() {
@@ -222,6 +218,15 @@ public class WalkerAgent extends SelfReportingAgent {
 
             }
         });
+    }
+
+    @Override
+    protected void setup() {
+        super.setup();
+
+        registerService("walker", MSG_QUEUE_CLASS);
+
+        //test();
 
         addBehaviour(new CyclicBehaviour() {
             @Override
@@ -230,26 +235,33 @@ public class WalkerAgent extends SelfReportingAgent {
                 if (null != message) {
                     String command = message.getContent();
                     ACLMessage response = message.createReply();
-                    if (ACT_WALK == command) {
+                    System.out.println("navigator command:" + command);
+                    if (null == command) {
+                        response.setPerformative(ACLMessage.UNKNOWN);
+                    } else if (command.equals(ACT_WALK)) {
                         boolean result = walk();
                         if (result) {
                             response.setPerformative(ACLMessage.CONFIRM);
+                            System.out.println("walk OK");
                         } else {
                             response.setPerformative(ACLMessage.DISCONFIRM);
+                            System.out.println("walk FAIL");
                         }
 
-                    } else if (ACT_FEEL == command) {
-                        BitSet result = feel(); //redo enum set
+                    } else if (command.equals(ACT_FEEL)) {
+                        BitSet result = feel(); 
+                        System.out.println("feel OK");
                         try {
                             response.setContentObject(String.valueOf(result.toLongArray()[0]));
                         } catch (Exception e) {
                         }
 
-                    } else if (ACT_TURN == command) {
+                    } else if (command.equals(ACT_TURN)) {
+                        System.out.println("turn OK");
                         turn(); //always happens
                         response.setPerformative(ACLMessage.CONFIRM);
 
-                    } else if (ACT_SHOOT == command) {
+                    } else if (command.equals(ACT_SHOOT)) {
                         boolean result = shoot();
                         if (result) {
                             response.setPerformative(ACLMessage.CONFIRM);
@@ -257,7 +269,7 @@ public class WalkerAgent extends SelfReportingAgent {
                             response.setPerformative(ACLMessage.DISCONFIRM);
                         }
 
-                    } else if (ACT_AMMO == command) {
+                    } else if (command.equals(ACT_AMMO)) {
                         int arrows = ammo();
                         response.setContent(Integer.toString(arrows));
                         response.setPerformative(ACLMessage.CONFIRM);
@@ -265,6 +277,10 @@ public class WalkerAgent extends SelfReportingAgent {
                     } else {
                         response.setPerformative(ACLMessage.UNKNOWN);
                     }
+                    
+                    send(response);
+                    System.out.println("walker feels:" + feel());
+                    print();
                 } else {
                     block();
                 }
